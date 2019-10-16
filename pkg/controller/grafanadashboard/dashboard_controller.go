@@ -26,6 +26,12 @@ import (
 
 var log = logf.Log.WithName("controller_grafanadashboard")
 
+type GrafanaDashboarder interface {
+	IsKnown(kind string, o runtime.Object) (bool, error)
+	UpdateDashboard(d *i8ly.GrafanaDashboard, json string) (bool, error)
+	DeleteDashboard(d *i8ly.GrafanaDashboard) error
+}
+
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
 * business logic.  Delete these comments after modifying this file.*
@@ -39,11 +45,15 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+	var helper GrafanaDashboarder
+	//helper = common.NewKubeHelper()
+	helper = common.NewGrafanaClient()
+
 	return &ReconcileGrafanaDashboard{
 		client: mgr.GetClient(),
 		scheme: mgr.GetScheme(),
 		config: common.GetControllerConfig(),
-		helper: common.NewKubeHelper(),
+		helper: helper,
 	}
 }
 
@@ -73,7 +83,7 @@ type ReconcileGrafanaDashboard struct {
 	client client.Client
 	scheme *runtime.Scheme
 	config *common.ControllerConfig
-	helper *common.KubeHelperImpl
+	helper GrafanaDashboarder
 }
 
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
@@ -216,6 +226,7 @@ func (r *ReconcileGrafanaDashboard) importDashboard(d *i8ly.GrafanaDashboard) (r
 
 	updated, err := r.helper.UpdateDashboard(d, dashboardJson)
 	if err != nil {
+		log.Error(err, "failed to update dashboard")
 		return reconcile.Result{}, err
 	}
 

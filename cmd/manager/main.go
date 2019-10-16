@@ -4,6 +4,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
+	"runtime"
+	"strings"
+
 	"github.com/integr8ly/grafana-operator/pkg/apis"
 	"github.com/integr8ly/grafana-operator/pkg/controller"
 	"github.com/integr8ly/grafana-operator/pkg/controller/common"
@@ -15,13 +19,10 @@ import (
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/rest"
-	"os"
-	"runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
-	"strings"
 )
 
 var log = logf.Log.WithName("cmd")
@@ -68,7 +69,11 @@ func startDashboardController(ns string, cfg *rest.Config, signalHandler <-chan 
 	}
 
 	// Use a separate manager for the dashboard controller
-	grafanadashboard.Add(dashboardMgr)
+	err = grafanadashboard.Add(dashboardMgr)
+	if err != nil {
+		log.Error(err, "failed to run dashboard manager")
+		os.Exit(1)
+	}
 
 	go func() {
 		if err := dashboardMgr.Start(signalHandler); err != nil {
